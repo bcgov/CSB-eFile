@@ -1,0 +1,582 @@
+#%RAML 0.8
+---
+title: Draft CSB CSO
+version: 0.0.2
+baseUri: https://cso.jag.apis.gov.bc.ca
+protocols: [HTTPS]
+securedBy: [basic]
+
+securitySchemes:
+  - basic:
+      type: Basic Authentication
+      
+schemas:
+  - !include ./xsd/common/ECF-4.0-CommonTypes.xsd
+  - NotifyFilingReviewCompleteMessage: !include ./xsd/message/NotifyFilingReviewCompleteMessage.xsd
+  - ReviewFilingRequestMessage: !include ./xsd/message/ReviewFilingRequestMessage.xsd
+  - RecordFilingRequestMessage: !include ./xsd/message/RecordFilingRequestMessage.xsd
+  - MessageReceiptMessage: !include ./xsd/message/ECF-4.0-MessageReceiptMessage.xsd
+  - CourtPolicyQueryMessage: !include ./xsd/message/ECF-4.0-CourtPolicyQueryMessage.xsd
+  - CourtPolicyReponseMessage: !include ./xsd/message/ECF-4.0-CourtPolicyResponseMessage.xsd
+  - RecordDocketingCallbackMessage: !include ./xsd/message/ECF-4.0-RecordDocketingCallbackMessage.xsd
+  - FilingListQueryMessage: !include ./xsd/message/ECF-4.0-FilingListQueryMessage.xsd
+  - FilingListResponseMessage: !include ./xsd/message/ECF-4.0-FilingListResponseMessage.xsd
+  - FeesCalculationQueryMessage: !include ./xsd/message/ECF-4.0-FeesCalculationQueryMessage.xsd
+  - FeesCalculationResponseMessage: !include ./xsd/message/ECF-4.0-FeesCalculationResponseMessage.xsd
+  - FilingStatusQueryMessage: !include ./xsd/message/ECF-4.0-FilingStatusQueryMessage.xsd
+  - FilingStatusResponseMessage: !include ./xsd/message/ECF-4.0-FilingStatusResponseMessage.xsd
+  - CaseListQueryMessage: !include ./xsd/message/ECF-4.0-CaseListQueryMessage.xsd
+  - CaseListResponseMessage: !include ./xsd/message/ECF-4.0-CaseListResponseMessage.xsd
+  - CaseQueryMessage: !include ./xsd/message/ECF-4.0-CaseQueryMessage.xsd
+  - CaseResponseMessage: !include ./xsd/message/ECF-4.0-CaseResponseMessage.xsd
+  - DocumentQueryMessage: !include ./xsd/message/ECF-4.0-DocumentQueryMessage.xsd
+  - DocumentResponseMessage: !include ./xsd/message/ECF-4.0-DocumentResponseMessage.xsd
+  - ServiceInformationQueryMessage: !include ./xsd/message/ECF-4.0-ServiceInformationQueryMessage.xsd
+  - ServiceInformationResponseMessage: !include ./xsd/message/ECF-4.0-ServiceInformationResponseMessage.xsd
+  - CoreFilingMessage: !include ./xsd/message/ECF-4.0-CoreFilingMessage.xsd
+  - ServiceReceiptMessage: !include ./xsd/message/ECF-4.0-ServiceReceiptMessage.xsd
+
+documentation:
+  - title: Overview
+    content: |
+      _**This is a working draft API Specification for CSB CSO.**_
+
+      The proposed API is based on (borrows from the concepts of) the ECF 4.01
+      specifications for the
+      [Legal-XML Electronic Court Filing (ECF)](https://www.oasis-open.org/committees/tc_home.php?wg_abbrev=legalxml-courtfiling).
+      However it does not follow the recommendations of the ECF specification to the letter and is therefore
+      not compatible and/or interoperable with any other existing ECF implementation; nor is it intended to be.
+
+      This draft constitutes what is considered to be a minimum implementation of the ECF specification.
+      All of the Major Design Elements (MDEs) and Operations (represented as Components, Resources, and Methods or Patterns) are included in the documentation for completeness.  Those that are not being used for this implementation are marked as **Not Implemented**.
+
+      The proposed implementation differs from the ECF specifications and recommendations in several aspects:
+        1. It is implemented as a RESTful API, which has been based on the Web Services Service Interaction Profile 2.1 Specification.
+        2. This initial implementation utilizes the XML schemas and examples defined in the ECF specification for example purposes only.  The intent is to translate the messages and schemas into JSON.
+
+  - title: Scope
+    content: |
+      The intent of this specification is similar to that of the ECF specifications in that it describes components needed to develop an electronic court filing system.
+
+      Basic familiarity with the [ECF Specification](http://docs.oasis-open.org/legalxml-courtfiling/specs/ecf/v4.01/ecf-v4.01-spec/ecf-v4.01-spec.doc) is assumed.
+
+      This initial draft has been developed to provide a foundation to support discussion, feedback, collaboration, and the further design and development work needed to develop the API for it’s intended purpose in the CSB-eFiling system.  It is not intended to be a complete specification.  Details will be added and changes made as discussions proceed and the design evolves.
+
+      Examples of work to be done:
+        - Take a closer look at how files relate to the messages and how they flow through the ECF API to see what concepts we may be able to borrow.
+        - Determine appropriate methods for ensuring message and document integrity (support for non-repudiation).
+        - Determine security implementation(s).
+        - Convert XML messaging structures to JSON.  Requires a review of the defined message to determine what may be extracted and incorporated into the API functionality.  For example, additional query and/or filter parameters.
+
+  - title: Filing Preparation to Court Record Process Flow
+    content: |
+      #### Minumum Implementation
+      This section describes the sequence of operations in the proposed minimum implementation.
+
+      The flow involves two parties (three logical components):
+        - A Filer (represented by the **Filer** Component)
+        - And a Court (represented by the **Registry** and **Court** Components)
+
+      The resources and methods supporting the processes in this flow are listed below, the equivalent ECF operation for each is listed in square brackets.  The business rules associated with the methods is documented as part of the description of the method itself (within the API documentation).  The resources and methods listed in bold are required and MUST occur in every successful filing as long as sending and receiving components are implemented.
+      The other operations are optional and MAY occur within a given filing:
+        - /Registry/Policy - Get _[GetPolicy]_
+        - **/Registry/Filing - Post** _[ReviewFiling]_
+        - **/Court/Record - Post** _[RecordFiling]_
+        - **Court Webhook Filing Event** _[NotifyDocketingComplete]_
+        - **Registry Webhook Filing Event** _[NotifyFilingReviewComplete]_
+
+      _**Sequence Diagram**_
+
+      ![alt text](./images/CSO Simple Sequence Diagram.png)
+
+      #### Full  Implementation
+      This section describes the sequence of operations in a full implementation.  _This is provided for informaiton only, as
+      many of the resources required are not being implemented._
+
+      The flow involves three parties (four logical components):
+        - A Filer (represented by the **Filer** Component)
+        - A Court (represented by the **Registry** and **Court** Components)
+        - A Service Recipient (represented by the **LegalService** Component)
+
+      The resources and methods supporting the processes in this flow are listed below, the equivalent ECF operation for each is listed in square brackets.  The business rules associated with the methods is documented as part of the description of the method itself (within the API documentation).  The resources and methods listed in bold are required and MUST occur in every successful filing as long as sending and receiving components are implemented.
+        The other operations are optional and MAY occur within a given filing:
+        - /Registry/Policy - Get _[GetPolicy]_
+        - /Court/ServiceInformation - Get _[GetServiceInformation, **Not Implemented**]_
+        - /Registry/Filing/Fees - Get _[GetFeesCalculation, **Not Implemented**]_
+        - **/Registry/Filing - Post** _[ReviewFiling]_
+        - /LegalService/Serve - Post _[ServeFiling, **Not Implemented**]_
+        - **/Court/Record - Post** _[RecordFiling]_
+        - **Court Webhook Filing Event** _[NotifyDocketingComplete]_
+        - **Registry Webhook Filing Event** _[NotifyFilingReviewComplete]_
+        - At any point during or after posting a filing for review, if the filing is accessible,
+        a party MAY access information through the following operations;
+          - /Registry/Filing - Get _[GetFilingList, **Not Implemented**]_
+          - /Registry/Filing/{caseTrackingID}/Status - Get _[GetFilingStatus, **Not Implemented**]_
+        - At any point after receiving an event from the the Registry Webhook, if the case is accessible,
+        a party MAY access information through the following operations;
+          - /Court/Case - Get _[GetCaseList, **Not Implemented**]_
+          - /Court/Case/{caseID} - Get _[GetCase, **Not Implemented**]_
+          - /Court/Case/{caseID}/Documents/{documentID} - Get _[GetDocument, **Not Implemented**]_
+
+      _**Sequence Diagram**_
+
+      ![alt text](./images/CSO Full Sequence Diagram.png)
+
+  - title: Filer (Filer Component)
+    content: |
+      #### Summary
+      The **Filer** is a REQUIRED logical component within the system which is equivalent/analogous to
+      the **Filing Assembly MDE** from the ECF specification; _which enables a filer to
+      create a filing message for submission to a court, and for service on other
+      parties in the case, returning a response from the court to the filer._
+      It is not listed as a resource component as it does not implement any concrete API resources, it simply needs to
+      provide a Webhook endpoint in order to conform to the patterns set forth.
+
+      This component is responsible for interacting with:
+        - The **Registry** in order to submit case files for review and filing with the **Court**.
+        - Optionally (**Not Implemented**), with the **Court** to request case files and documents.
+        - Optionally (**Not Implemented**), with the **LegalService** in order to distribute case files to other legal parties.
+
+      #### Registry Webhook
+      This component MUST implement a Webhook endpoint in order to receive asynchronous events from the
+      **Registry**.  This endpoint is equivalent/analogous to the **NotifyFilingReviewComplete**
+      operation provided by the **Filing Assembly MDE** from the ECF specification.  The payloads
+      posted to the endpoint provide similar information to that of the **NotifyFilingReviewCompleteMessage**
+      parameter of the **NotifyFilingReviewComplete** operation.
+
+      This endpoint must be able to accept the following event payloads:
+        * Payment Accepted/Rejected - A message indicating the payment for the filing was either accepted, or rejected and why.
+        * Filing Accepted/Rejected - A message indicating the filing was either accepted and registered with the court, or rejected and why.
+
+      #### Implementation
+      Along with the required Webhook(s) the **Filer** MUST implement the following.
+
+      Generates Messages:
+      - Court Policy Query Message
+      - Core Filing Message
+
+      Performs Activities:
+      - Gets the court policy from the **Registry**; **/Registry/Policy - Get**
+      - Submits filings to the **Registry** for review and recording with the **Court**; **/Registry/Filing - Post**
+
+# Court Registry Component Resource
+/Registry:
+  displayName: Court Registry Component
+  description: |
+    #### Summary
+    The **Registry** is a REQUIRED logical component within the system which is equivalent/analogous to
+    the **Filing Review MDE** from the ECF specification; _which enables a court to receive and review
+    a filing message and prepare the contents for recording in its case management and document management systems, sending a
+    response concerning the filing to the **Filer** (Filing Assembly MDE). It also enables
+    filers to obtain court-specific policies regarding electronic filing and to check on the status of a filing._
+
+    This component is responsible for interacting with:
+      - The **Filer** in its process of submitting case files for review and filing with the **Court**.
+      - The **Court** to subnit case files and documents.
+
+    #### Court Webhook
+    This component MUST implement a Webhook endpoint in order to receive asynchronous events from the
+    **Court**.  This endpoint is equivalent/analogous to the **NotifyDocketingComplete**
+    operation provided by the **Filing Review MDE** from the ECF specification.  The payloads
+    posted to the endpoint provide similar information to that of the **RecordDocketingCallbackMessage**
+    parameter of the **NotifyDocketingComplete** operation.
+
+    This endpoint must be able to accept the following event payloads:
+      * Filing Accepted/Rejected - A message indicating the filing was either accepted and registered with the court, or rejected and why.
+
+    #### Registry Webhook
+    This componet interacts with the **Filer** component asynchronously through Webhooks.  It expects the **Filer**
+    to implement an endpoint that will receive the following event payloads:
+      * Payment Accepted/Rejected - A message indicating the payment for the filing was either accepted, or rejected and why
+      * Filing Accepted/Rejected - A message indicating the filing was either accepted and registered with the court, or rejected and why.
+
+    If the clerk rejects the filings or the **Registry** receives an event from the **Court**,
+    the **Registry** MUST post an event to the **Filer**'s Webhook endpoint as an asynchronous response indicating
+    whether the filing was accepted and filed with the court record system.  _From the ECF specification, and left here for discussion... The operation MAY return the filed documents or links to the documents, but MUST include the [FIPS 180-2] SHA 256 document hash, a condensed representation of a document intended to protect document integrity._
+
+    If the filing included a payment, and the filing was accepted by the clerk and court record system, a
+    receipt for the payment MUST be included in the operation.
+
+    #### Implementation
+    Along with the required Webhook(s) the **Registry** MUST implement the following.
+
+    Generates Messages:
+      - Court Policy Response Message
+      - Record Docketing Message
+      - Filing Event Messages
+
+    Performs Activities:
+      - Submits filings to the **Court**; **/Court/Record - Post**
+      - Notifies the **Filer** of filing related events through the **Registry** Webhook
+
+    Implement Functionality For:
+      - /Registry/Policy - Get
+      - /Registry/Filing - Post
+  /Policy:
+    displayName: Policy
+    description: |
+      The **Filer** MAY obtain a court’s machine-readable court policy at any time.  The **Registry** returns the
+      machine-readable court policy in a synchronous response. The content of the machine readable court policy is
+      simular to that described in Section 2.4.2 of the ECF specification. This step may be omitted if the **Filer**
+      already has the current court policy.
+    get:
+      description: Get the court's machine-readable court policy.  This method is equivalent/analogous to the **GetPolicy** operation from the ECF specification.
+      body:
+        application/xml:
+          schema: CourtPolicyQueryMessage
+          example: !include ./xml/ECF-4.0-CourtPolicyQueryMessage.xml
+        # application/json:
+          # schema: TODO: To be defined
+      responses:
+        200:
+          body:
+            application/xml:
+              schema: CourtPolicyReponseMessage
+              example: !include ./xml/ECF-4.0-CourtPolicyResponseMessage.xml
+            # application/json:
+              # schema: TODO: To be defined
+  /Filing:
+    description: |
+      Provides the resources and methods needed for a **Filer** to interact with the case files submitted to the **Registry**.
+    post:
+      description: |
+        Submit a filing for review.
+
+        The **Filer** MUST submit a filing to the court by posting a filing request to the **Registry** for review.
+        The request contains the documents and information about the case along with filing payment informaiton.
+        The synchronous response includes the filing identifier (caseTrackingID) issued by the court, that can later be used
+        to get information on the filing.
+
+        The **Filer** will also receive asynchronous events, through the **Registry** Webhook at various times as the
+        request is being processed; refer to the documentaion on the **Registry** Webhook, in both the **Filer** and **Registry** components for details.
+
+        This method is equivalent/analogous to the **ReviewFiling** operation in the ECF standards.
+      body:
+        application/xml:
+          schema: ReviewFilingRequestMessage
+          example: !include ./xml/ECF-4.0-CoreFilingMessage-Criminal2.xml
+        # application/json:
+          # schema: TODO: To be defined
+      responses:
+        200:
+          body:
+            application/xml:
+              schema: MessageReceiptMessage
+            # application/json:
+              # schema: TODO: To be defined
+    get:
+      description: |
+        **Not implemented.**  _Reserved for future implementation.
+        The content and response body schemas and examples are provided for informational purposes only._
+
+        The **Filer** MAY query for a list of filings matching several criteria including the **Filer**'s' identifier,
+        the case tracking number, and the filed date within a certain time range. The **Registry** responds
+        synchronously with a list of matching filings and the status of each filing.
+
+        This method is equivalent/analogous to the **GetFilingList** operation in the ECF standards.
+      queryParameters:
+        filerID:
+          description: Filter the results by the filer's identifier.
+        caseTrackingID:
+          description: Filter the results by the case tracking number.
+        filedDateTime:
+          description: Filter the results by date and time.
+      body:
+        application/xml:
+          schema: FilingListQueryMessage
+          example: !include ./xml/ECF-4.0-FilingListQueryMessage.xml
+        # application/json:
+          # schema: TODO: To be defined
+      responses:
+        200:
+          body:
+            application/xml:
+              schema: FilingListResponseMessage
+              example: !include ./xml/ECF-4.0-FilingListResponseMessage.xml
+            # application/json:
+              # schema: TODO: To be defined
+    /Fees:
+      get:
+        description: |
+          **Not implemented.**  _Reserved for future implementation.
+          The content and response body schemas and examples are provided for informational purposes only._
+
+          The **Filer** MAY query for the fees associated with a filing by calling this method, with a filing as
+          a parameter. The synchronous response contains the fee calculation and, optionally, a list of the included charges.
+          This step may be omitted if there are no fees associated with filings in the court or the calculated fees are
+          already known.
+
+          This method is equivalent/analogous to the **GetFeesCalculation** operation in the ECF standards.
+        body:
+          application/xml:
+            schema: FeesCalculationQueryMessage
+            example: !include ./xml/ECF-4.0-FeesCalculationQueryMessage.xml
+              # application/json:
+              # schema: TODO: To be defined
+        responses:
+          200:
+            body:
+              application/xml:
+                schema: FeesCalculationResponseMessage
+                example: !include ./xml/ECF-4.0-FeesCalculationResponseMessage.xml
+              # application/json:
+                # schema: TODO: To be defined
+    /{caseTrackingID}:
+      description: A specific case file.
+      /Status:
+        get:
+          description: |
+            **Not implemented.**  _Reserved for future implementation.
+            The content and response body schemas and examples are provided for informational purposes only._
+
+            Get the status of a filing with `caseTrackingID = {caseTrackingID}`
+
+            The **Filer** MAY query the status of a filing at any point following the submission using the case
+            tracking identifier to get the status of the selected filing.
+
+            This method is equivalent/analogous to the **GetFilingStatus** operation in the ECF standards.
+          body:
+            application/xml:
+              schema: FilingStatusQueryMessage
+              example: !include ./xml/ECF-4.0-FilingStatusQueryMessage.xml
+            # application/json:
+              # schema: TODO: To be defined
+          responses:
+            200:
+              body:
+                application/xml:
+                  schema: FilingStatusResponseMessage
+                  example: !include ./xml/ECF-4.0-FilingStatusResponseMessage.xml
+                # application/json:
+                  # schema: TODO: To be defined
+
+# Court Record Component Resource
+/Court:
+  displayName: Court Record Component
+  description: |
+    The **Court** is a REQUIRED logical component within the system which is equivalent/analogous to the
+    **Court Record MDE** from the ECF specification, which;
+    _Enables a court to record electronic documents and court list entries in its case
+    management and document management systems and returns the results to the **Registry**.
+    The **Court** also enables a **Filer** to obtain service information for all parties in a case, to
+    obtain information about cases maintained in the court’s court list, register of actions and calendars,
+    and to access documents maintained in the court’s electronic records._
+
+    #### Court Record Webhook
+    This componet interacts with the **Registry** component asynchronously through Webhooks.  It expects the **Registry**
+    to implement an endpoint that will receive the following event payloads:
+      * Filing Accepted/Rejected - A message indicating the filing was either accepted and registered with the court, or rejected and why.
+
+    The **Court** MUST post an event to the **Registry** 's Webhook endpoint as an asynchronous response indicating
+    whether the filing was accepted or rejected by the court record system.  If the **Court** rejected the filing,
+    an explanation MUST be provided. If the **Court** accepts the filing, the case file information (e.g. date and time the
+    document was entered into the court record, judge assigned, document identifiers and next court event
+    scheduled) MUST be provided.
+
+    #### Implementation
+    The **Court** MUST implement the following.
+
+    Generates Messages:
+      - Filing event messages
+
+    Performs Activities:
+      - Notifies the **Registry** of filing related events through the **Court** Record Webhook
+
+    Implement Functionality For:
+      - /Court/Record - Post
+  /Record:
+    post:
+      displayName: Record Filing
+      description: |
+        Submit a filing to the court.
+
+        If the registry clerk reviews and accepts the filing, the **Registry** MUST submit the filing to the **Court** record.
+        The information submitted includes information from **Registry** submission along with any modifications or
+        comments made by the clerk. The **Court** responds synchronously with an acknowledgement of the request.
+
+        This method is equivalent/analogous to the **RecordFiling** operation in the ECF standards.
+      body:
+        application/xml:
+          schema: RecordFilingRequestMessage
+          example: !include ./xml/ECF-4.0-RecordDocketingMessage.xml
+        # application/json:
+          # schema: TODO: To be defined
+      responses:
+        200:
+          body:
+            application/xml:
+              schema: MessageReceiptMessage
+            # application/json:
+              # schema: TODO: To be defined
+  /Case:
+    get:
+      description: |
+        **Not implemented.**  _Reserved for future implementation.
+        The content and response body schemas and examples are provided for informational purposes only._
+
+        The **Filer** MAY query the **Court** for a list of cases matching several criteria including
+        case number, case participant, or the filed date over a specific time range.
+        The **Court** responds synchronously with a list of matching cases.
+
+        This method is equivalent/analogous to the **GetCaseList** operation in the ECF standards.
+      queryParameters:
+        caseID:
+          description: Filter the results by the case ID.
+        participant:
+          description: Filter the results by a particular participant in the case.
+        filedDateTime:
+          description: Filter the results by date and time.
+      body:
+        application/xml:
+          schema: CaseListQueryMessage
+          example: !include ./xml/ECF-4.0-CaseListQueryMessage.xml
+          # application/json:
+          # schema: TODO: To be defined
+      responses:
+        200:
+          body:
+            application/xml:
+              schema: CaseListResponseMessage
+              example: !include ./xml/ECF-4.0-CaseListResponseMessage.xml
+            # application/json:
+              # schema: TODO: To be defined
+    /{caseID}:
+      description: A specific case file.
+      get:
+        description: |
+          **Not implemented.**  _Reserved for future implementation.
+          The content and response body schemas and examples are provided for informational purposes only._
+
+          The **Filer** MAY query the **Court** for information about a particular case including the case
+          participants, court docket and calendar events. The **Filer** MAY also limit the amount of case detail returned from the
+          **Court** by using a set of filters. The **Court** responds synchronously with the selected case information.
+
+          This method is equivalent/analogous to the **GetCase** operation in the ECF standards.
+
+          TODO: Determine the complete list of filter parameters.
+        body:
+          application/xml:
+            schema: CaseQueryMessage
+            example: !include ./xml/ECF-4.0-CaseQueryMessage.xml
+          # application/json:
+            # schema: TODO: To be defined
+        responses:
+          200:
+            body:
+              application/xml:
+                schema: CaseResponseMessage
+                example: !include ./xml/ECF-4.0-CaseResponseMessage.xml
+              # application/json:
+                # schema: TODO: To be defined
+      /Documents:
+        description: Documents within a specific case file.
+        /{documentID}:
+          description: A specific document in a specific case file.
+          get:
+            description: |
+              **Not implemented.**  _Reserved for future implementation.
+              The content and response body schemas and examples are provided for informational purposes only._
+
+              The **Filer** MAY query the **Court** file a particular document from a case. The **Court**
+              will respond synchronously with the requested document or instructions on how to access it.
+
+              This method is equivalent/analogous to the **GetDocument** operation in the ECF standards.
+            body:
+              application/xml:
+                schema: DocumentQueryMessage
+                example: !include ./xml/ECF-4.0-DocumentQueryMessage.xml
+              # application/json:
+                # schema: TODO: To be defined
+            responses:
+              200:
+                body:
+                  application/xml:
+                    schema: DocumentResponseMessage
+                    example: !include ./xml/ECF-4.0-DocumentResponseMessage.xml
+                  # application/json:
+                    # schema: TODO: To be defined
+  /ServiceInformation:
+    get:
+      description: |
+        **Not implemented.**  _Reserved for future implementation.
+        The content and response body schemas and examples are provided for informational purposes only._
+
+        The **Filer** MAY obtain the **Court**’s service information for all parties in an existing case at
+        any time using the appropriate case number on the **Court**.  The service list returned
+        assists the filer in maintaining the filer’s service list and is not a substitute for the filer’s service list.
+        To provide this information, the **Court** MUST have access to the court’s registry with all updated information
+        about case participants. There MUST be only one such registry per court, though multiple courts MAY
+        share the same registry. The **Court** responds synchronously to the **Filer** with a service list reflecting the
+        most current contact information available to the court, which is necessary to complete secondary service, whether
+        electronically or by other means.
+
+        If the court provides a Hub Service, the electronic service information returned from this query
+        MUST include the court’s Service ID for all case participants who have one.
+
+        A party to a case is always the official target of service. In practice, the system will actually deliver to pro
+        se litigants and to attorneys as intermediaries.
+
+        The duty to complete secondary service is upon the filer, and not the court, except when the court is the
+        filer.
+
+        The query returns a service list current as of the transaction. No assumption can be made that the data returned by
+        the operation will remain current for use at any future point in time.
+
+        This method is equivalent/analogous to the **GetServiceInformation** operation in the ECF standards.
+      body:
+        application/xml:
+          schema: ServiceInformationQueryMessage
+          example: !include ./xml/ECF-4.0-ServiceInformationQueryMessage.xml
+        # application/json:
+          # schema: TODO: To be defined
+      responses:
+        200:
+          body:
+            application/xml:
+              schema: ServiceInformationResponseMessage
+              example: !include ./xml/ECF-4.0-ServiceInformationResponseMessage.xml
+            # application/json:
+              # schema: TODO: To be defined
+# Legal Service Component Resource
+/LegalService:
+  displayName: Legal Service Component
+  description: |
+    **Not implemented.**  _Reserved for future implementation.
+    The content and response body schemas and examples are provided for informational purposes only._
+
+    Enables a party to receive service electronically FROM other parties in the
+    case. Note that service TO other parties in the case is performed by the **Filer**.
+  /Serve:
+    post:
+      description: |
+        **Not implemented.**  _Reserved for future implementation.
+        The content and response body schemas and examples are provided for informational purposes only._
+
+        Serve case files to 3rd parties.
+
+        At approximately the same time the **Filer** submits the filing to the court, the **Filer**
+        MAY serve the entire filing, to other parties in the case by posting the information to  the service recipient.
+        This operation MUST NOT be used to serve parties in a new case or to persons or organizations that have not yet been made party to the
+        case. The **LegalService** responds synchronously with an acknowledgement that the message will
+        be delivered to the service recipient or with an error.
+        If the court hosts a Hub Service, the **Filer** MAY send post to Hub Service.  The Hub Service
+        MUST then broadcast the message to each of the **LegalService**'s and respond synchronously with a single
+        response to the **Filer**, conveying the results of each individual service transaction.
+        If a court chooses to support electronic service, then each **Filer** MUST support service
+        operations for the clients for which it provides **Filer** functionality.
+
+        This method is equivalent/analogous to the **ServeFiling** operation in the ECF standards.
+      body:
+        application/xml:
+          schema: CoreFilingMessage
+          example: !include ./xml/ECF-4.0-CoreFilingMessage-BankruptcyNotice.xml
+        # application/json:
+          # schema: TODO: To be defined
+      responses:
+        200:
+          body:
+            application/xml:
+              schema: ServiceReceiptMessage
+              example: !include ./xml/ECF-4.0-ServiceReceiptMessage.xml
+            # application/json:
+              # schema: TODO: To be defined
