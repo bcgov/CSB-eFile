@@ -2,13 +2,13 @@
 Court Services Branch Electronic Document Filing API
 
 ## Features
-This repo contains generated a raml spec for the Court Services Branch eFile API project.
+This repo contains a generated raml spec for the Court Services Branch eFile API project.
 
 ## Usage
 All the details are available in [cso-efile.md](dist/cso-efile.md)
 
 ## How to Contribute
-We are just getting setup so we're not ready for contrabutions yet. If you want to comment feel free to open an issue!
+We are just getting setup so we're not yet ready for contrabutions. If you want to comment feel free to open an issue!
 
 ## License
 
